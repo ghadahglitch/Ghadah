@@ -1198,6 +1198,7 @@ body #scene #left-zone .list li.item input[type="radio"]:checked~.content {
     font-weight: bold;
     color: #94a1b2;
     margin-left: 50px;
+    margin-top: -10px;
 }
 
 #backBtn {
