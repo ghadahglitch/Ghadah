@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Threat Hunting Stuff</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="imgs/favicon_eng.png">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.2/font/bootstrap-icons.css">
+</head>
+
+<body>
+    <div class="padding-large" id="main">
+        <header class="container" id="postHeader">
+            <a href="/index.html#creations" id="backBtn">
+                <button type="button" class="btn-close">
+                    <span class="icon-cross"></span>
+                </button>
+            </a>
+
+        </header>
+        <div class="content" id="post">
+            <h2 class="title" id="post-title">../Threat Hunting Stuff</h2>
+            <p id="postDate"> Jan 4th 2023<br><br>
+            </p>
+            <div id="postContent">
+                <p>
+                    A collection of what I have found helpful in preparing for the eLearnSecurity Certified Threat
+                    Hunting Professional
+                    (<a href="https://elearnsecurity.com/product/ecthpv2-certification/" target="_blank">eCTHPv2</a>)
+                    exam. This is in
+                    no means a comprehensive resource, it is what I have come across and found beneficial/interesting.
+                    Hopefully it'll help.
+                    The structure is as follows:
+                </p>
+                <ol>
+                    <li><a href="#general">General<span style="font-size:small;">-ish</span> Concepts</a></li>
+                    <ul type="none">
+                        <li><a href="#1.1">1.1. </a>Hypothesis.</li>
+                        <li><a href="#1.2">1.2. </a>Windows Core Processes Questions.</li>
+                        <li><a href="#1.3">1.3. </a>Windows Core Processes Baseline.</li>
+                        <li><a href="#1.4">1.4. </a>Windows Event IDs.</li>
+                    </ul>
+                    <li><a href="#attacks">Attacks</a></li>
+                    <ul type="none">
+                        <li><a href="#2.1">2.1. </a>Webshells.</li>
+                        <li><a href="#2.2">2.2. </a>Credential Theft & Other Password Related.</li>
+                        <li><a href="#2.3">2.3. </a>PsExec.</li>
+                        <li><a href="#2.4">2.4. </a>Masquerading.</li>
+                        <li><a href="#2.5">2.5. </a>Living Off The Land Binaries (LOLBAS).</li>
+                        <li><a href="#2.6">2.6. </a>RDP Settings Tampering.</li>
+                        <li><a href="#2.7">2.7. </a>Windows Management Instrumentation (WMI).</li>
+                        <li><a href="#2.8">2.8. </a>Powershell.</li>
+                        <li><a href="#2.9">2.9. </a>User Account Control (UAC) Bypass.</li>
+                        <li><a href="#2.10">2.10. </a>Anti-Malware Scan Interface (AMSI) Bypass.</li>
+                        <li><a href="#2.11">2.11. </a>Alternate Data Streams (ADS).</li>
+                        <li><a href="#2.12">2.12. </a>Injections.</li>
+                    </ul>
+                    <li><a href="#persis">Persistence</a></li>
+                    <ul type="none">
+                        <li><a href="#3.1">3.1. </a>Autostart Locations.</li>
+                        <li><a href="#3.2">3.2. </a>Scheduled Tasks.</li>
+                        <li><a href="#3.3">3.3. </a>Component Object Model (COM) Hijacking.</li>
+                        <li><a href="#3.4">3.4. </a>Dll Hijacking. </li>
+                        <li><a href="#3.5">3.5. </a>Windows Services.</li>
+                    </ul>
+                    <li><a href="#links">Helpful Links</a></li>
+                </ol>
+                <h2 id="general">1. General<span style="font-size:small;">-ish</span> Concepts</h2>
+                <div id="1.1">
+                    <b>1.1.</b> Having a <a href="https://sansorg.egnyte.com/dl/qyBaLJHovj"
+                        target="_blank">hypothesis</a> with the below points prior to hunting have been crucial:
+                    <ul>
+                        <li>Details of the behavior to hunt for.</li>
+                        <li>An understanding of the attack technique behind it.</li>
+                        <li>The data and sources needed.</li>
+                    </ul>
+                </div>
+
+                <div id="1.2">
+                    <b>1.2.</b> When hunting within Windows, an understanding of the "core" Windows processes and
+                    how they
+                    normally behave is needed in order to identify anomalies <span style="font-size:smaller;">(<a
+                            href="#1.3">section 1.3</a> contains a
+                        simplistic baseline)</span>, trying to answer
+                    the below is a good start:
+                    <ul>
+                        <li>Is the name spelled correctly?</li>
+                        <li>Is it signed by Microsoft?</li>
+                        <li>Is the process running out of the expected path? <span style="font-size:small;">(if it is
+                                running from temporary locations or the
+                                recycle bin it should be investigated)</span></li>
+                        <li>Was the process spawned by the expected parent process?</li>
+                        <li>Is the process communicating to any outbound IPs? <span style="font-size:small;">(if it is
+                                then
+                                it should be investigated)</span></li>
+                        <li>Is cmd.exe or wscript.exe or powershell.exe running as a child process?</li>
+                        <li>Is the process running under the proper <a
+                                href="https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-identifiers"
+                                target="_blank">SID</a>?</li>
+                    </ul>
+
+                </div>
+                <div id="1.3">
+                    <span> <b>1.3.</b> The below illustrates a simplistic baseline for some of Windows’ "core"
+                        processes:</span><br>
+                    <ul>
+                        <li><b>Session Manager:</b></li>
+                        <ul>
+                            <li><b>Path:</b> %SystemRoot%\System32\smss.exe</li>
+                            <li><b>Objective:</b>
+                                <ul type="disc">
+                                    <li>Starts 2 sessions:</li>
+                                    <ul type="disc">
+                                        <li>Session 0 which starts csrss.exe & wininit.exe (i.e. OS services).</li>
+                                        <li>Session 1 which starts csrss.exe & winlogon.exe (i.e. user session).</li>
+                                    </ul>
+                                    <li>Loads the registry as well as known DLLs into shared memory locations.</li>
+                                    <ul type="disc">
+                                        <li style="font-size:smaller;">“Known DLLs” record in the registry:
+                                            HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session
+                                            Manager\KnownDLLs
+                                        </li>
+                                    </ul>
+                                </ul>
+                            </li>
+                            <li><b>Parent Process:</b> SYSTEM.</li>
+                            <li><b>SID:</b> NT Authority\SYSTEM (S-1-5-18).</li>
+                            <li><b>Notes:</b>
+                                <ul type="disc">
+                                    <li>Only one instance should be running.</li>
+                                    <li>Additional sessions are created by RDP sessions or fast user switching on shared
+                                        computers.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <br>
+                        <li><b>Client/Server Run Subsystem Process:</b></li>
+                        <ul>
+                            <li><b>Path:</b> %SystemRoot%\System32\csrss.exe</li>
+                            <li><b>Objective:</b>
+                                <ul type="disc">
+                                    <li>Responsible for managing processes and threads.</li>
+                                    <li>Maps drive letters, creates temporary files and handles the shutdown process.
+                                    </li>
+                                    <li>Makes Windows API available for other processes.</li>
+                                </ul>
+                            </li>
+                            <li><b>Parent Process:</b> no parent <span style="font-size: smaller;">(it’s created by
+                                    smss.exe
+                                    but that
+                                    process won’t exist)</span>.</li>
+                            <li><b>SID:</b> NT Authority\SYSTEM (S-1-5-18).</li>
+                            <li><b>Notes:</b>
+                                <ul type="disc">
+                                    <li>Runs within sessions 0 & 1.</li>
+                                    <li>Will run for each newly created user session. </li>
+                                    <li>Commonly targeted, some "common" misspellings (e.g.
+                                        cssrs.exe, cssrss.exe, csrsss.exe).</li>
+
+                                </ul>
+                            </li>
+                        </ul>
+                        <br>
+                        <li><b>Windows Logon Process:</b></li>
+                        <ul>
+                            <li><b>Path:</b> %SystemRoot%\System32\winlogon.exe</li>
+                            <li><b>Objective:</b>
+                                <ul type="disc">
+                                    <li>Responsible for user logons/logoffs, launches logonUI.exe for username and
+                                        password.
+                                    </li>
+                                    <li>Passes credentials to lsass.exe (verified by AD or local SAM).</li>
+                                    <li>Both logonui.exe and userinit.exe will exist and will not be visible after this
+                                        process.</li>
+                                </ul>
+                            </li>
+                            <li><b>Parent Process:</b> no parent <span style="font-size: smaller;">(it’s created by
+                                    smss.exe
+                                    but that
+                                    process won’t exist)</span>. </li>
+                            <li><b>SID:</b> NT Authority\SYSTEM (S-1-5-18).</li>
+                            <li><b>Notes:</b>
+                                <ul type="disc">
+                                    <li>Loads userinit.exe via software\microsoft\windows NT\currentVersion\winlogon.
+                                    </li>
+                                    <ul type="disc">
+                                        <li>userinit.exe initializes the user environment and runs logon scripts and
+                                            GPO.
+                                        </li>
+                                        <li>The userinit registry key is commonly abused.</li>
+                                    </ul>
+                                    <li>Abuse comes within the different components of the login process, malware abuses
+                                        the
+                                        SHELL registry value (which should have explorer.exe as the value).</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <br>
+                        <li><b>Windows Initialization Process:</b></li>
+                        <ul>
+                            <li><b>Path:</b> %SystemRoot%\System32\wininit.exe</li>
+                            <li><b>Objective:</b>
+                                <ul type="disc">
+                                    <li>Responsible for launching services.exe, lsass.exe and lsm.exe in session 0.</li>
+                                </ul>
+                            </li>
+                            <li><b>Parent Process:</b> no parent <span style="font-size: smaller;">(it’s created by
+                                    smss.exe
+                                    but that
+                                    process won’t exist)</span>. </li>
+                            <li><b>SID:</b> NT Authority\SYSTEM (S-1-5-18).</li>
+                            <li><b>Notes:</b>
+                                <ul type="disc">
+                                    <li>Only one instance should be running.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <br>
+                        <li><b>Local Session Manager:</b></li>
+                        <ul>
+                            <li><b>Path:</b> %SystemRoot%\System32\lsm.exe</li>
+                            <li><b>Objective:</b>
+                                <ul type="disc">
+                                    <li>Within Windows 7 and prior. After Windows 7, there is no lsm and it's replaced
+                                        with a service called lsm.dll responsible for working with smss.exe to create,
+                                        destroy or manipulate new user sessions.</li>
+                                    <li>Handles logon, logoff, shell start and end, locking and unlocking the desktop.
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><b>Parent Process:</b> wininit.exe </li>
+                            <li><b>SID:</b> NT Authority\SYSTEM (S-1-5-18).</li>
+                            <li><b>Notes:</b>
+                                <ul type="disc">
+                                    <li>Only one instance should be running (Windows 7).</li>
+                                    <li>No instance should be running in Windows 8+ (it will be running as a service dll
+                                        instead).</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <br>
+                        <li><b>Service Control Manager:</b></li>
+                        <ul>
+                            <li><b>Path:</b> %SystemRoot%\System32\services.exe</li>
+                            <li><b>Objective:</b>
+                                <ul type="disc">
+                                    <li>Responsible for loading "auto-start" services as well as device drivers into
+                                        memory.
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><b>Parent Process:</b> wininit.exe </li>
+                            <li><b>SID:</b> NT Authority\SYSTEM (S-1-5-18).</li>
+                            <li><b>Notes:</b>
+                                <ul type="disc">
+                                    <li>Only one instance should be running as it is a protected process.</li>
+                                    <li>Parent to svchost.exe, dllhost.exe, taskhost.exe and spoolsv.exe.</li>
+                                    <li>Services are defined in HKLM\SYSTEM\CurrentControlSet\Services.</li>
+                                    <li>Keeps an in-memory database of services information <span
+                                            style="font-size: smaller;">(which can be queried using
+                                            sc.exe)</span>.</li>
+                                    <li>After successful login, services.exe will backup a copy of the registry
+                                        keys into HKLM\SYSTEM\Select\LastKnownGood which will be known as the "last
+                                        known
+                                        good configuration".</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <br>
+                        <li><b>Local Security Authority Subsystem:</b></li>
+                        <ul>
+                            <li><b>Path:</b> %SystemRoot%\System32\lsass.exe</li>
+                            <li><b>Objective:</b>
+                                <ul type="disc">
+                                    <li>Responsible for user authentication, generating access tokens specifying the
+                                        user's
+                                        security
+                                        policies/restrictions and the processes spawned in the user
+                                        session.</li>
+                                </ul>
+                            </li>
+                            <li><b>Parent Process:</b> wininit.exe </li>
+                            <li><b>SID:</b> NT Authority\SYSTEM (S-1-5-18).</li>
+                            <li><b>Notes:</b>
+                                <ul type="disc">
+                                    <li>Only one instance should be running.</li>
+                                    <li>Commonly targeted to dump password hashes.</li>
+                                    <li>Uses authentication packages within HKLM\System\CurrentControlSet\Control\Lsa to
+                                        authenticate users.</li>
+                                    <li>Creates security tokens for SAM, AD and NetLogon.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <br>
+                        <li><b>Generic Service Host Process:</b></li>
+                        <ul>
+                            <li><b>Path:</b> %SystemRoot%\System32\svchost.exe</li>
+                            <li><b>Objective:</b>
+                                <ul type="disc">
+                                    <li>Responsible for hosting multiple services' dlls into a generic shared service
+                                        process.</li>
+                                    <li>Each service will have a registry entry that includes ServiceDll, it instructs
+                                        svchost.exe to which dll to use <span style="font-size: smaller;">(entry will
+                                            include svchost.exe -k &lt;name&gt;)</span>.</li>
+                                </ul>
+                            </li>
+                            <li><b>Parent Process:</b> services.exe </li>
+                            <li><b>SID:</b> NT Authority\SYSTEM (S-1-5-18) or Local service (S-1-5-19) or Network
+                                Service
+                                (S-1-5-20).</li>
+                            <ul>
+                                <li><span style="font-size: smaller;">In Windows 10, instances will start as the user
+                                        upon
+                                        logon (-k unistacksvcgroup).</span></li>
+                            </ul>
+                            <li><b>Notes:</b>
+                                <ul type="disc">
+                                    <li>Multiple instances are expected.</li>
+                                    <li>Each svchost.exe process will run with a unique -k &lt;name&gt;.</li>
+                                    <li>All dll-based services with the same &lt;name&gt; will share the same
+                                        svchost.exe
+                                        process <span style="font-size: smaller;">(&lt;name&gt; values can be found in
+                                            Software\Microsoft\Windows
+                                            NT\CurrentVersion\Svchost)</span>.</li>
+                                    <li>Heavily abused, indicators include: omitting the -k, different path,
+                                        services.exe won't be the parent.
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <br>
+                        <li><b>Generic Host Process:</b></li>
+                        <ul>
+                            <li><b>Path:</b> %SystemRoot%\System32\taskhost.exe</li>
+                            <li><b>Objective:</b>
+                                <ul type="disc">
+                                    <li>Acts as a host for processes that run from dlls rather than executables.</li>
+                                    <li>At startup, it checks the services portion of the registry to create a list of
+                                        dll-based services that it needs to load then loads them.</li>
+                                </ul>
+                            </li>
+                            <li><b>Parent Process:</b> services.exe </li>
+                            <li><b>SID:</b> varies.</li>
+                            <li><b>Notes:</b>
+                                <ul type="disc">
+                                    <li>In Windows 8, it was renamed to: taskhost<u>ex</u>.exe</li>
+                                    <li>In Windows 10, it was renamed to: taskhost<u>w</u>.exe</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <br>
+                        <li><b>Windows Explorer:</b></li>
+                        <ul>
+                            <li><b>Path:</b> %SystemRoot%\explorer.exe</li>
+                            <li><b>Objective:</b>
+                                <ul type="disc">
+                                    <li>Responsible for the user's desktop and everything that comes with it, including
+                                        access to files and launching files through their file extensions.
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><b>Parent Process:</b> no parent <span style="font-size: smaller;">(created by
+                                    userinit.exe
+                                    but that process won't exist)</span>.
+                            </li>
+                            <li><b>SID:</b> as the logged-on user.</li>
+                            <li><b>Notes:</b>
+                                <ul type="disc">
+                                    <li>Only one process is spawned per logged-on user <span
+                                            style="font-size: smaller;">(even if multiple explorer windows open)</span>.
+                                    </li>
+                                    <li>Instances that are listening/connected to a network port or where cmd is a child
+                                        process should be investigated.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </ul>
+                </div>
+
+
+                <div id="1.4">
+                    <b>1.4.</b> In addition, Windows has event logs that can be helpful in hunting. The below is an
+                    overview
+                    to keep in mind.
+                    <ul>
+                        <li><b>Windows core event logs:</b></li>
+                        <ul>
+                            <li>Application: contains events logged by applications or user programs. Includes any error
+                                messages an application is designed to report. </li>
+                            <span style="font-size: smaller;">
+                                <ul type="disc">
+                                    <li>Path in Windows XP, Windows 2003 and prior:
+                                        %SystemRoot%\System32\Config\AppEvent.evt </li>
+                                    <li>Path in Windows 2003+: %SystemRoot%\System32\Winevt\Logs\application.evtx</li>
+                                </ul>
+                            </span>
+
+                            <li>System: contains events logged by multiple Windows system components such as loaded and
+                                unloaded drivers, different network configurations and Windows service events.</li>
+                            <span style="font-size: smaller;">
+                                <ul type="disc">
+                                    <li>Path in Windows XP, Windows 2003 and prior:
+                                        %SystemRoot%\System32\Config\SysEvent.evt </li>
+                                    <li>Path in Windows 2003+: %SystemRoot%\System32\Winevt\Logs\system.evtx</li>
+                                </ul>
+                            </span>
+                            <li>Security: contains events related to Windows authentication and security processes
+                                including successful and unsuccessful login attempts, changes to users’ privileges and
+                                creations of accounts. </li>
+                            <span style="font-size: smaller;">
+                                <ul type="disc">
+                                    <li>Path in Windows XP, Windows 2003 and prior:
+                                        %SystemRoot%\System32\Config\SecEvent.evt </li>
+                                    <li>Path in Windows 2003+: %SystemRoot%\System32\Winevt\Logs\security.evtx </li>
+                                </ul>
+                            </span>
+                        </ul>
+                        <li><b>Each event log location is in the registry:</b>
+                            HKLM\SYSTEM\CurrentControlSet\Services\Eventlog</li>
+                        <b>
+                            <li>System Monitor (Sysmon):</li>
+                        </b>
+                        <ul>
+                            <li>A <a href="https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon"
+                                    target="_blank">Windows system service and device driver</a> that monitors and logs
+                                system
+                                activity to the Windows event log. </li>
+                            <li>Provides details about the creation of processes,
+                                network connections, and attempts of modifying a file's creation time.
+                            </li>
+                            <li>Does not makes any attempt to hide or protect its existence from adversaries.</li>
+                        </ul>
+                    </ul>
+                </div>
+
+
+                <h2 id="attacks">2. Attacks</h2>
+                <div id="2.1">
+                    <b>2.1. Webshells:</b>
+                    <ul>
+                        <li>A script that is uploaded into a server to enable remote administration of the machine.</li>
+                        <li>They can be uploaded onto the server via: cross-site scripting (XSS), SQL injection (SQLi),
+                            remote file inclusion (RFI), local file inclusion (LFI) or incorrect server
+                            configurations.</li>
+                        <ul>
+                            <li>Both <a
+                                    href="https://www.imperva.com/learn/application-security/rfi-remote-file-inclusion/"
+                                    target="_blank">RFI & LFI</a> target vulnerabilities in web applications that
+                                dynamically reference scripts.
+                                However, RFI uses external scripts/URLs located within a different domain while LFI uses
+                                local scripts that the adversary has to upload onto the server.</li>
+                        </ul>
+                        <li>This is a <a href="https://github.com/tennc/webshell" target="_blank">Github repository
+                            </a>that
+                            contains a collection of webshells. It can be helpful when trying to understand the
+                            different
+                            type of webshells.</li>
+                        <li>One way to detect a webshell on a Windows server is through w3wp parent-child relationship.
+                            w3wp.exe is an
+                            IIS worker process that runs web applications and is responsible for handling requests sent
+                            to a
+                            web server for a specific application.</li>
+                        <ul>
+                            <li><a href="https://redcanary.com/blog/detecting-sharepoint-attacks-via-worker-process-activity/"
+                                    target="_blank">
+                                    When a command is executed through the webshell on IIS (for example ping), the web
+                                    server process will spawn w3wp.exe which in turn will spawn child processes e.g.
+                                    cmd,
+                                    ping etc.
+                                </a>
+
+                            </li>
+                        </ul>
+
+                    </ul>
+                </div>
+                <div id="2.2">
+                    <b>2.2. Credential Theft & Other Password Related:</b>
+                    <ul>
+                        <li>It isn't possible to list all the methods of <a
+                                href="https://attack.mitre.org/tactics/TA0006/" target="_blank">gaining credentials</a>
+                            but
+                            some of the ways
+                            used are:</li>
+                        <ul>
+                            <li>Using Silver and Golden Ticket attacks <span style="font-size: smaller;">(a popular
+                                    method)</span>.</li>
+                            <li>Cracking NTLM hashes <span style="font-size: smaller;">(might not work in some
+                                    environments)</span>.</li>
+                            <li>Kerberoasting <span style="font-size: smaller;">(i.e. cracking kerberos service tickets
+                                    with weak passwords)</span>.</li>
+                        </ul>
+                        <li>To hunt for possible password spraying/guessing attacks consider: </li>
+                        <ul>
+                            <li>
+                                Event ID 4625 (failed logon).
+                            </li>
+                            <li>
+                                Logon type 3 (network logon).
+                            </li>
+                            <li>
+                                Observe if in a small amount of time, multiple failed attempts to the same system(s) has
+                                occurred.
+                            </li>
+                        </ul>
+
+                        <li>To hunt for <a href="https://www.binarydefense.com/reliably-detecting-pass-the-hash/"
+                                target="_blank">pass the hash</a> consider:
+                        </li>
+                        <ul>
+                            <li>Event ID 4624 (successful logon).</li>
+                            <li>Logon type 3 (network logon).</li>
+                            <li>Logon process set to NtLmSsP with the key length set to 0.</li>
+                        </ul>
+                        <li>To hunt for possible lsass dump through Sysmon events consider:</li>
+                        <ul>
+                            <li>Sysmon event IDs 8 (a process created a thread in another process) or 10 (a process
+                                opened another process).</li>
+                            <li>"GrantedAccess" field not set to 0x1400 or 0x1000 or 0x100000.</li>
+                            <li>"TargetImage" is lsass.exe and the "SourceImage" field is not wininit.exe or csrss.exe.
+                            </li>
+                        </ul>
+                        <li>To hunt for possible lsass dump through Windows security events consider:
+                        </li>
+                        <ul>
+                            <li>Event ID 4656 (handle to an object was requested).</li>
+                            <li>"AccessMask" field not set to 0x1400 or 0x1000 or 0x100000.</li>
+                            <li>"ObjectName" has "lsass.exe" and the process' name is not
+                                "C:\Windows\system32\lsass.exe". </li>
+                        </ul>
+
+                        <li>To hunt for the opening of lsass.exe's memory by PowerShell consider:
+                            <ul>
+                                <li>Sysmon event IDs 8 (a process created a thread in another process) or 10 (a process
+                                    opened another process).</li>
+                                <li>"SourceImage" field is set to powershell.exe.</li>
+                                <li>"TargetImage" is set to lsass.exe. </li>
+                            </ul>
+                        </li>
+                        <li>To hunt for possible credential database dumping consider:
+                            <ul>
+                                <li>Event ID 4688 (new process has been created).</li>
+                                <li>"NewProcessName" field is set to vssadmin.exe.</li>
+                                <li>
+                                    Reason: accessing the Active Directory database file (i.e. NTDS.dit) can be done by
+                                    different methods. One method is the creation of a Volume Shadow Copy of a domain
+                                    controller which can be achieved by vssadmin.exe or WMI. Thus, looking at command
+                                    line
+                                    arguments of new processes and filtering for known
+                                    binaries that can access NTDS.dit e.g. vssadmin.exe.
+                                </li>
+                            </ul>
+                        </li>
+                        <li>To hunt for the creation of a dump file consider:
+                            <ul>
+                                <li>Sysmon event ID 11 (a file is created or overwritten).</li>
+                                <li>"TargetFilename" field contains the string "dmp" (i.e. *dmp).</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+                <div id="2.3">
+                    <b> 2.3. PsExec:</b>
+                    <ul>
+                        <li><a href="https://learn.microsoft.com/en-us/sysinternals/downloads/psexec"
+                                target="_blank">It's a
+                                telnet-replacement which lets you execute processes on other systems without having to
+                                manually install client software</a>. Its most powerful uses include: launching
+                            interactive shells on remote systems and
+                            remote-enabling tools like <a
+                                href="https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/ipconfig"
+                                target="_blank">ipconfig</a>.</li>
+
+                        <li>How it generally works: </li>
+                        <ol>
+                            <li>PsExec starts the remote logon process using supplied credentials.
+                            </li>
+                            <li>Performs a quick check to see if it can copy a file and execute it using the hidden
+                                $ADMIN
+                                share
+                                on the target system <span style="font-size: smaller;">(If $ADMIN isn’t available,
+                                    PsExec will try using $IPC)</span>.</li>
+                            <li>If no errors are received, it unpacks a binary from within itself “psexesvc.exe,” which
+                                is
+                                executed on the remote host as a temporary service and then deleted.</li>
+                        </ol>
+                        <li>Since it's part of <a href="https://learn.microsoft.com/en-us/sysinternals/downloads"
+                                target="_blank">Sysinternals</a>, there will be a registry key artifact that documents
+                            the
+                            user’s “acceptance” of
+                            the EULA which is written the first time the tool is executed and can be found
+                            at HKCU\SOFTWARE\Sysinternals\&lt;sysinternals_tool_name&gt;\<a
+                                href=" https://bromiley.medium.com/digging-into-sysinternals-psexec-64c783bace2b"
+                                target="_blank">EulaAccepted</a></li>
+                        <li><a href="https://redcanary.com/blog/threat-hunting-psexec-lateral-movement/"
+                                target="_blank">Hunting PsExec:</a></li>
+                        <ul>
+                            <li>Event ID 5145 is the best starting point as it captures details <span
+                                    style="font-size: smaller;">(including if the responsible process is
+                                    PsExec or not)</span> for requests to access the hidden shares $ADMIN and $IPC.
+                            </li>
+
+                            <li>Event ID 5140 indicates that a share was successfully accessed alongside the account
+                                used
+                                for access. </li>
+                            <li>Event IDs 4697 and 7045 record service creation which may capture the installation of
+                                the
+                                temporary "psexesvc" service.</li>
+                            <li>Event ID 4688 and Sysmon ID 1 capture process execution details. However, event ID 4688
+                                can
+                                identify the use of PsExec on both source and target systems, including full command
+                                line
+                                arguments.</li>
+                            <li>Default/weak indicator: services with the name "psexesvc" being created on the remote
+                                machine.</li>
+                            <ul type="disc">
+                                <li>
+                                    <a href="https://www.elastic.co/pdf/elastic-guide-to-threat-hunting"
+                                        target="_blank">
+                                        Could receive a better result if the search covered any executable that uses the
+                                        “—accepteula” flag and the
+                                        “\\” network resource prefix.
+                                    </a>
+                                </li>
+                            </ul>
+                        </ul>
+
+                    </ul>
+                </div>
+                <div id="2.4">
+                    <b>2.4. Masquerading:</b>
+                    <ul>
+                        <li>Renaming the malware something that could pass as a normal process.</li>
+                        <ul>
+                            <li><a href="http://www.hexacorn.com/blog/2013/07/04/the-typographical-and-homomorphic-abuse-of-svchost-exe/"
+                                    target="_blank">e.g. svch0st, scvhost, svchost32 etc.</a></li>
+                        </ul>
+                        <li>Often uses non-standard locations to hide: temporary folders, temporary internet files,
+                            program
+                            files or the recycle bin.
+                        </li>
+                        <li>To hunt for renamed powershell consider:</li>
+                        <ul>
+                            <li>First method:</li>
+                            <ul type="disc">
+                                <li>Sysmon event ID 1 (new process has been created).</li>
+                                <li>"SourceImage" field is not powershell.exe or pwsh.exe.</li>
+                                <li>The description is "Windows PowerShell" or the product is PowerShell Core.</li>
+                                <li>Logic: search for inconsistencies between the image name and versioninfo field.</li>
+                            </ul>
+                            <li>Second method:</li>
+                            <ul type="disc">
+                                <li>Sysmon event ID 1 (new process has been created).</li>
+                                <li>The description has "PowerShell".</li>
+                                <li>"SourceImage" field is not powershell.exe or powershell_ise.exe.</li>
+                            </ul>
+                        </ul>
+                    </ul>
+                </div>
+
+                <div id="2.5">
+                    <b>2.5. Living Off The Land Binaries (LOLBAS):</b>
+                    <ul>
+                        <li>They are Microsoft-signed native files that in addition to their normal purpose exhibit
+                            functionalities
+                            that are useful to an adversary.</li>
+                        <li>A list of <a href="https://lolbas-project.github.io/" target="_blank">Windows' LOLBAS.</a>
+                            The
+                            Linux-equivalent can be found <a href="https://gtfobins.github.io/"
+                                target="_blank">here</a>.
+                        </li>
+                        <li>Documentation of Microsoft-signed applications that could be used by adversaries can be
+                            found at
+                            <a href="https://github.com/api0cradle/UltimateAppLockerByPassList" target="_blank">Oddvar
+                                Moe’s
+                                UltimateAppLockerByPassList</a> and <a
+                                href="https://docs.microsoft.com/en-us/windows/device-security/device-guard/deploy-code-integrity-policies-steps"
+                                target="_blank">Microsoft’s own reference</a>.
+                        </li>
+                        <li>When hunting consider:</li>
+                        <ul>
+                            <li>Event ID 4688 (new process has been created) or Sysmon event ID 1 (new process has been
+                                created).</li>
+                            <li>The parent process and if it's suspicious.</li>
+                        </ul>
+                        <li><a href="https://docs.broadcom.com/doc/istr-living-off-the-land-and-fileless-attack-techniques-en"
+                                target="_blank">A comprehensive report by ISTR addressing living off the land and
+                                fileless
+                                attack techniques.</a></li>
+                        <li>Casey Smith and Ross Wolf's <a
+                                href="https://i.blackhat.com/USA-19/Thursday/us-19-Smith-Fantastic-Red-Team-Attacks-And-How-To-Find-Them.pdf"
+                                target="_blank">slides</a> explaining the concepts (mainly the "lolbas revello"
+                            section).
+                        </li>
+                        <li>To hunt for malicious use of rundll32 consider:</li>
+
+                        <ul>
+                            <li>Process name is rundll32.exe</li>
+                            <li>The arguments of the process are pcwutl.dll and LaunchApplication.</li>
+                            <li>Reason: rundll32.exe can call pcwutl.dll which in turn has the ability to execute an
+                                application.</li>
+                        </ul>
+                        <li>To hunt for LOLBAS openurl consider:</li>
+                        <ul>
+                            <li>The executable being rundll32.exe.</li>
+                            <li>The arguments of the process are url.dll or ieframe.dll or shdocvw.dll.</li>
+                        </ul>
+                        <li> <a href="https://github.com/carnal0wnage/ApplicationWhitelistBypassTechniques/blob/master/TheList.txt"
+                                target="_blank">Some interesting Microsoft binaries to monitor: </a> </li>
+                        <ul>
+                            <li><a href="https://learn.microsoft.com/en-us/visualstudio/deployment/clickonce-security-and-deployment?view=vs-2022#what-is-a-clickonce-application"
+                                    target="_blank">ClickOnce</a> Applications.</li>
+                            <li>Dfsvc.exe (dfshim.dll).</li>
+                            <li>InstallUtil.exe.</li>
+                            <li>Msbuild.exe.</li>
+                            <li>Regsvr32.exe.</li>
+                            <li>Rundll32.exe.</li>
+                            <li>Bitsadmin.exe.</li>
+                        </ul>
+                    </ul>
+                </div>
+
+                <div id="2.6">
+                    <b>2.6. RDP Settings Tampering:</b>
+                    <ul>
+                        <li>A prerequisite for tampering is to have RDP enabled, so consider:</li>
+                        <ul>
+                            <li>Sysmon event ID 1 (new process has been created).</li>
+                            <li>Process name is netsh.exe.</li>
+                            <li>The process' arguments contain "localport=3389" and "action=allow".</li>
+                            <li>Reason: a common way to enable RDP is to use netsh to create a firewall rule
+                                allowing an RDP connection.</li>
+                        </ul>
+                        <li>
+                            To hunt for <a
+                                href="https://blog.menasec.net/2019/02/threat-hunting-25-rdp-over-reverse-ssh.html"
+                                target="_blank"> RDP over a Reverse SSH Tunnel </a> consider:
+                        </li>
+                        <ul>
+                            <li>Event ID 4624 (successful account logon).</li>
+                            <li>Logon type 10 (remoteInteractive login).</li>
+                            <li>The IP address is 127.0.0.1</li>
+                        </ul>
+                        <li>When <a
+                                href="https://ponderthebits.com/2018/02/windows-rdp-related-event-logs-identification-tracking-and-investigation/"
+                                target="_blank">hunting RDP sessions</a> consider:</li>
+                        <ol>
+                            <li>Network Connection:</li>
+                            <ul type="disc">
+                                <li>The first indication of an RDP logon.</li>
+                                <li>Event ID: 1149 (successful network authentication).</li>
+                            </ul>
+                            <li>Authentication:</li>
+                            <ul>
+                                <li>Event IDs: 4624 (successful account logon) and 4625 (failed account logon).
+                                </li>
+                            </ul>
+                            <li>Logon (i.e. events after a successful authentication):</li>
+                            <ul type="disc">
+                                <li>Event IDs: 21 (successful RDP logon) and 22 (successful RDP
+                                    logon and shell start).
+                                </li>
+                            </ul>
+
+                            <li>Session Disconnect/Reconnect:</li>
+                            <ul type="disc">
+                                <li>
+                                    Event IDs: 24 (user disconnected from RDP session), 25 (user reconnected to an
+                                    existing
+                                    RDP session), 39 (user formally disconnected from the RDP session) and 40 (user
+                                    disconnected/reconnected from RDP session).
+                                </li>
+                                <li>
+                                    Event IDs: 4778 (user reconnected to an existing RDP session) and 4779 (user
+                                    disconnected from RDP session).
+                                </li>
+                            </ul>
+
+                            <li>Logoff:</li>
+                            <ul type="disc">
+                                <li>Event ID: 23 (user formally logged off the system).</li>
+                                <li>Event IDs: 4634 (user disconnected from RDP session) and 4647 (user initiated a
+                                    formal
+                                    logoff).</li>
+                                <li> Event ID: 9009 (user has closed out an RDP connection). </li>
+                            </ul>
+                        </ol>
+                    </ul>
+                </div>
+                <div id="2.7">
+                    <b>2.7. Windows Management Instrumentation (WMI):</b>
+                    <ul>
+                        <li>The <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/wmi-start-page"
+                                target="_blank">infrastructure</a> for data and operation management on Windows systems.
+                            It
+                            automates
+                            administrative tasks on remote systems as well as providing information about the status of
+                            local
+                            or remote systems.</li>
+                        <li>To hunt for remote execution via WMI at the destination side consider:</li>
+                        <ul>
+                            <li>Event ID 4624 (successful logon).</li>
+                            <li>Logon type 3 (network login).</li>
+                            <li>Event ID 4672 (special privileges assigned).</li>
+                            <li>Sysmon event ID 1 with "wmiprvse.exe" as the process.</li>
+                        </ul>
+                        <li>WMI persistence (aka <a href="https://www.mandiant.com/resources/wmi-vs-wmi-monitor"
+                                target="_blank">WMI
+                                subscription</a>) consists of the three items below:
+                        </li>
+                        <ul>
+                            <li>
+                                An "event filter" which is the triggering event (the condition to test for).
+                            </li>
+                            <li>An "event consumer" which is the action to be performed when the triggering event occurs
+                                (the result of meeting the condition). </li>
+                            <li>
+                                A binding of filter to consumer (the registration mechanism that binds a filter to a
+                                consumer).
+                                <ul type="disc">
+                                    <li>Will generate event ID 5861 (by default since Windows 10).</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <li>Hunting for persistence through WMI involves:
+                            <ol>
+                                <li>The creation of a WMI subscription <span style="font-size:small;">(so search for any
+                                        newly registered subscriptions)</span>.</li>
+                                <ul type="disc">
+                                    <li>Sysmon event ID 19 (WmiEventFilter activity detected).</li>
+                                    <li>Sysmon event ID 20 (WmiEventConsumer activity detected).</li>
+                                    <li>Sysmon event ID 21 (WmiEventConsumerToFilter activity detected).</li>
+                                    <li>Search for PowerShell's "Register-WmiEvent" command.</li>
+                                </ul>
+                                <li>The execution of WMI subscriptions which is handled by the WMI Provider Host process
+                                    <span style="font-size:small;">(i.e. processes spawning from WmiPrvSe.exe)</span>.
+                                </li>
+                            </ol>
+                        </li>
+
+                        <li>To hunt for remote WMI usage consider:
+                            <ul>
+
+                                <li>Event ID 4648 (logon with explicit credentials).</li>
+                                <li> Process executable is WMIC.exe </li>
+                                <li>Reason: remote usage of WMI will create an 4648 event with source process of
+                                    wmic.exe.
+                                </li>
+                            </ul>
+                        </li>
+                        <li>To hunt for lateral movement through WMI consider:</li>
+                        <ul>
+                            <li>Sysmon event ID 1 (new process has been created).</li>
+                            <li>The image is WmiPrvSE.exe</li>
+                            <li>The process' arguments include "-secured" and "-Embedding".</li>
+                            <li>The parent image is svchost.exe</li>
+                            <li>The parent process' arguments include "-k DcomLaunch". </li>
+                            <li>The user is NT AUTHORITY\NETWORK SERVICE.</li>
+                        </ul>
+
+                        <li>To hunt for lateral movement through WMI <span style="font-size:smaller;">(through network
+                                connections)</span> consider:</li>
+                        <ul>
+                            <li>Sysmon event ID 3 (new connection has been established).</li>
+                            <li>The image is svchost.exe</li>
+                            <li>The user is NT AUTHORITY\NETWORK SERVICE.</li>
+                        </ul>
+
+                    </ul>
+                </div>
+                <div id="2.8">
+                    <b>2.8. Powershell:</b>
+                    <ul>
+                        <b>
+                            <li>Unmanaged Powershell:</li>
+                        </b>
+                        <ul>
+                            <li>Powershell.exe is a wrapper for System.Management.Automation.dll which means that
+                                applications can run powershell without running the executable and instead go to the dll
+                                directly.</li>
+                            <li>Worth noting that custom executables can natively call .Net & Windows APIs directly
+                                without
+                                PowerShell.</li>
+                            <li>Things to consider when hunting:
+                            </li>
+                            <ul type="disc">
+                                <li>Hosting/usage of "System.Management.Automation.dll" in processes that are not
+                                    powershell.exe
+                                    or
+                                    powershell_ise.exe.
+                                </li>
+                                <li>Event IDs 400 (new powershell process has started) and 800 (pipeline execution):
+                                </li>
+                                <ul type="circle">
+                                    <li>Where HostApplication is not a standard Microsoft tool
+                                        (PowerShell,
+                                        PowerShell ISE, etc).</li>
+                                    <li>Where the EngineVersion value is less than the PowerShell
+                                        version.</li>
+                                </ul>
+                                <li>Note: event ID 400 is generated by default
+                                    and does not require any special audit configuration. </li>
+                            </ul>
+                            <li>Tom Ueltschi's BOTCONF 2018 <a
+                                    href="https://www.botconf.eu/wp-content/uploads/2018/12/2018-Tom-Ueltschi-Sysmon.pdf"
+                                    target="_blank">slides</a> provide multiple detection techniques (starts at slide
+                                #78) as well as Sean Metcalf's <a
+                                    href="https://adsecurity.org/wp-content/uploads/2017/04/2017-BSidesCharm-DetectingtheElusive-ActiveDirectoryThreatHunting-Final.pdf"
+                                    target="_blank">slides</a> (starts at slide #25).
+                            </li>
+
+                            <li>Event IDs to consider when hunting:</li>
+                            <ul type="disc">
+                                <li>Event ID 4104 (execution of a remote PowerShell command).</li>
+                                <li>Event ID 4105 (start of script block execution).</li>
+                                <li>Event ID 4106 (end of script block execution).</li>
+                            </ul>
+
+                            <li>A <a href="https://github.com/SigmaHQ/sigma/tree/master/rules/windows/powershell)"
+                                    target="_blank">Github repository</a> containing multiple Sigma rules to detect
+                                malicious Powershell commands.
+                            </li>
+                            <li><a href="https://docs.broadcom.com/doc/increased-use-of-powershell-in-attacks-16-en"
+                                    target="_blank">Symantec's report regarding "the increased use of Powershell in
+                                    attacks".</a></li>
+                        </ul>
+                        <b>
+                            <li><span style="font-size:small;">(managed) </span>Powershell:</li>
+                        </b>
+                        <ul>
+
+                            <li>When hunting consider searching for unusual parent-child relationships (e.g. browsers,
+                                MS
+                                Office, etc. being the parent process):
+                                <ul type="disc">
+                                    <li>Parent image: mshta.exe or rundll32.exe
+                                        or regsvr32.exe or services.exe or winword.exe or wmiprvse.exe
+                                        or powerpnt.exe or excel.exe or msaccess.exe or mpub.exe or visio.exe
+                                        or outlook.exe or chrome.exe or iexplorer.exe or sqlserver.exe or other abnormal
+                                        executables.</li>
+                                    <li>The image is powershell.exe</li>
+                                </ul>
+                            <li>Alternatively, consider listing all parent-processes of Powershell instances and
+                                determine if any outliers/anomalies can be detected.
+                            </li>
+                            </li>
+                            <li>When hunting for obfuscated Powershell commands <span style="font-size:small;">(mainly
+                                    base64-encoded commands)</span>
+                                consider:
+                                <ul type="disc">
+                                    <li>Sysmon event ID 1 (new process has been created).</li>
+                                    <li>The image being powershell.exe or the process' description containing
+                                        PowerShell. </li>
+                                    <li>Command line arguments include "-e".</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </ul>
+                </div>
+                <div id="2.9">
+                    <b>2.9. User Account Control (UAC) Bypass:</b>
+                    <ul>
+                        <li>UAC is a mandatory access control enforcement <a target="_blank"
+                                href="https://learn.microsoft.com/en-us/windows/security/identity-protection/user-account-control/how-user-account-control-works">feature
+                                of Windows</a>. For each application that requires an administrator's access token a
+                            prompt
+                            for consent would be given.
+                        </li>
+                        <li>Main advantage is that it can block the automatic installation of unauthorized applications
+                            and
+                            unauthorized changes to system settings.</li>
+                        <li>One way to bypass UAC is through the abuse of "cliconfg.exe" to load "NTWDBLIB.dll" so
+                            consider:
+                            <ul>
+                                <li>Sysmon event ID 7 (a module has been loaded into a specific process).</li>
+                                <li>The process' name is cliconfg.exe with the file path having NTWDBLIB.dll.</li>
+                            </ul>
+
+                        </li>
+                        <li>To hunt for <a
+                                href="https://posts.specterops.io/fileless-uac-bypass-using-sdclt-exe-3e9f9ad4e2b3"
+                                target="_blank">fileless</a> bypass consider:</li>
+                        <ul>
+                            <li>Sysmon event ID 13 (registry value modifications).</li>
+                            <li>The registry key path is "shell\runas\command\isolatedCommand".</li>
+                        </ul>
+                    </ul>
+                </div>
+                <div id="2.10">
+                    <b>2.10. Anti-Malware Scan Interface (AMSI) Bypass:</b>
+                    <ul>
+                        <li>AMSI allows applications and services within Windows to integrate with any anti-malware
+                            product.
+                            Essentially, it provides insight into in-memory buffers, allowing anti-malware software to
+                            analyze a de-obfuscated script.
+                        </li>
+                        <li>It's integrated in: UAC, Powershell, Windows script host, Javascript, VBScript and Office
+                            VBA
+                            macro.
+                        </li>
+                        <li>A <a href="https://github.com/S3cur3Th1sSh1t/Amsi-Bypass-Powershell" target="_blank">Github
+                                repository</a> containing 18 different bypassing techniques.
+                        </li>
+
+                        <li><a href="https://blog.f-secure.com/hunting-for-amsi-bypasses/" target="_blank">F-Secure
+                                article
+                                detailing one bypass technique. </a> </li>
+                        <li>An anomaly to look for is if AMSI can be found within event ID 4104 (new process has been
+                            created).</li>
+                    </ul>
+                </div>
+                <div id="2.11">
+                    <b>2.11. Alternate Data Streams (ADS):</b>
+                    <ul>
+                        <li>A feature of <a
+                                href="https://learn.microsoft.com/en-us/windows-server/storage/file-server/ntfs-overview"
+                                target="_blank">NTFS</a> and not necessarily an attack, it's a file attribute which has
+                            a
+                            "name" and
+                            can store file metadata. However, it can provide adversaries with a method of hiding their
+                            tools and then
+                            executing
+                            them on the breached system.
+                        </li>
+                        <li>There are multiple methods to view ADS, including:</li>
+                        <ol>
+                            <li>Sysinternals' <a href="https://learn.microsoft.com/en-us/sysinternals/downloads/streams"
+                                    target="_blank">streams</a>.</li>
+                            <li>Windows commands: </li>
+                            <ul type="circle">
+                                <li>dir /r <span style="font-size:smaller;">(shows the streams per file).</span></li>
+                                <li>more &lt; FILE_NAME:STREAM_NAME <span style="font-size:smaller;">(prints the
+                                        value of the stream).</span></li>
+                            </ul>
+                            <li>Powershell command: get-item -path .\FILE_PATH -Stream * </li>
+                        </ol>
+                        <li>Important to note that the Zone.Identifier feature within ADS can provide
+                            information regarding the security zone associated with the file as well as its origin.
+                            The possible values:
+                            <ul type="circle">
+                                <li>0: my computer. </li>
+                                <li>1: local Intranet zone. </li>
+                                <li>2: trusted sites zone.</li>
+                                <li>3: Internet zone (i.e. file was downloaded from the Internet).</li>
+                                <li>4: restricted sites zone.</li>
+                            </ul>
+                        <li>To view the Zone.Identifier value: get-item -path .\FILE_PATH -stream
+                            zone.identifier</li>
+                        </li>
+                    </ul>
+                </div>
+                <div id="2.12">
+                    <b>2.12. Injections:</b>
+                    <ol type="A">
+                        <b>
+                            <li>dll injection:</li>
+                        </b>
+                        <ul>
+                            <li>It's the most common approach of injecting malicious code into a process, usually
+                                requires
+                                SeDebugPrivilege.</li>
+                            <li>How it works:
+                                <ol>
+                                    <li>The malware locates a process through: CreateToolhelp32Snapshot(),
+                                        Process32First(), Process32Next().</li>
+                                    <li>The targeted process is opened through: GetModuleHandle(), GetProcAddress(),
+                                        OpenProcess().</li>
+                                    <li>The malware allocates memory space to write the malicious dll's path
+                                        through: VirtualAllocEx().</li>
+                                    <li>The actual writing of the malicious dll's path into the allocated space is
+                                        done through: WriteProcessMemory().</li>
+                                    <li>The malware executes the malicious dll in another process by starting a new
+                                        thread through: CreateRemoteThread(), LoadLibrary().</li>
+                                    <ul type="disc">
+                                        <span style="font-size: smaller;">
+                                            <li>CreateRemoteThread() function is not the only function that can be used,
+                                                there
+                                                are undocumented functions like: NTCreateThreadEx() and
+                                                RtlCreateUserThread()
+                                                which needs to be loaded from ntdll.dll. RtlCreateUserThread is commonly
+                                                used by
+                                                mimikatz and metasploit.</li>
+                                        </span>
+                                    </ul>
+                                </ol>
+                            </li>
+                            <li>For this technique to work, the path of the malicious dll needs to reside on disk.</li>
+                        </ul>
+                        <b>
+                            <li>Reflective dll injection:</li>
+                        </b>
+                        <ul>
+                            <li>An injection technique where the concept of <a
+                                    href="https://dev.to/chris_bertrand/coding-concepts---reflection-4d2c"
+                                    target="_blank">reflective programming</a> is utilized. It
+                                loads the dll from memory into a host process. </li>
+                            <li>Simply put, it loads the malicious dll without calling the usual Windows APIs (i.e.
+                                the dll maps itself into memory). </li>
+                            <ul type="disc">
+                                <span style="font-size: smaller;">
+                                    <li>The dll has a <a
+                                            href="https://www.elastic.co/security-labs/hunting-memory-net-attacks"
+                                            target="_blank">self-mapping component </a>that is responsible for calling
+                                        DllMain
+                                        function and resolving import addresses.</li>
+                                </span>
+                            </ul>
+
+                            <li>Common API calls associated with reflective dll injection are LoadLibrary(),
+                                GetProcAddress() and
+                                VirtualAlloc().</li>
+                            <li>For a <a
+                                    href="https://security.stackexchange.com/questions/20815/detecting-reflective-dll-injection"
+                                    target="_blank">post-exploitation forensics</a> consider looking for PE files that
+                                exist
+                                only in memory and not on disk with running code. So scan through executable
+                                memory sections for what looks like PE files but aren't associated with any files on
+                                disk. </li>
+                        </ul>
+                        <b>
+                            <li>Thread hijacking:</li>
+                        </b>
+                        <ul>
+                            <li>A technique where the malware does not need to create a new process or thread. The
+                                malware
+                                loops through threads of a process and perform similar steps as dll injection with
+                                minor
+                                differences:</li>
+                            <ol>
+                                <li>The malware locates a thread through: CreateToolhelp32Snapshot(), Thread32First(),
+                                    Thread32Next().</li>
+                                <li>The targeted thread is opened through: OpenThread().</li>
+                                <li>The targeted thread is suspended through: SuspendThread().</li>
+                                <li>The malware allocates memory space through: VirtualAllocEx().</li>
+                                <li>The actual writing of the malicious dll's path into the allocated space is done
+                                    through: WriteProcessMemory().</li>
+                                <li>The malware resumes the thread through: ResumeThread().</li>
+                            </ol>
+                        </ul>
+                        <b>
+                            <li>Portable Executable
+                                <a href="https://attack.mitre.org/techniques/T1055/002/#:~:text=PE%20injection%20is%20a%20method,it%20via%20a%20new%20thread."
+                                    target="_blank">(PE)</a> Injection:
+                            </li>
+                        </b>
+                        <ul>
+                            <li>Similar to dll injection. However, the malicious dll does not need to reside on disk.
+                            </li>
+                            <li>Utilizes WriteProcessMemory() to write the malicious code into the memory location
+                                instead of writing the path of the malicious dll.</li>
+                            <li>LoadLibrary() is not utilized within this technique. </li>
+                            <li>The PE will have a new base address which will be the starting address of a
+                                memory-mapped executable or dll.</li>
+                        </ul>
+                        <b>
+                            <li><a href="https://cysinfo.com/detecting-deceptive-hollowing-techniques/"
+                                    target="_blank">Process hollowing</a>:</li>
+                        </b>
+                        <ul>
+                            <li>This technique unmaps the legitimate code from the process' memory and overwrites
+                                it with a malicious binary.</li>
+                            <li>How it usually works:
+                                <ol>
+                                    <li>The malware creates a process (through CreateProcess()) in a suspended state in
+                                        order to host the malicious code. </li>
+                                    <li>The malware unmaps the legitimate code from memory through:
+                                        ZwUnmapViewOfSection(),
+                                        NtUnmapViewOfSection().</li>
+                                    <li>The malware allocates memory locations for the malicious code and write them
+                                        into the space through: VirtualAllocEx(), WriteProcessMemory().</li>
+                                    <li>The malware sets the entry point to the new code section through:
+                                        SetThreadContext().</li>
+                                    <li>The malware un-suspends the process through: ResumeThread().</li>
+                                </ol>
+                            </li>
+                        </ul>
+                    </ol>
+                </div>
+
+                <h2 id="persis">3. Persistence</h2>
+                <div id="3.1">
+                    <b>3.1. Autostart Locations: </b>
+                    <ul>
+                        <li>The commonly used (and obvious) locations:</li>
+                        <ul>
+                            <li>%ProgramData%\Microsoft\Windows\Start Menu\Programs\Startup</li>
+                            <li>HKLM\Software\Microsoft\Windows\CurrentVersion\Run</li>
+                            <li>HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run</li>
+                            <li>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</li>
+                            <li>HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run</li>
+                        </ul>
+                        <li>Less common locations: </li>
+                        <ul>
+                            <li>HKLM\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\Userinit</li>
+                            <li>HKLM\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options</li>
+                            <li>HKLM\Software\Wow6432Node\Windows NT\CurrentVersion\Image File Execution Options</li>
+                            <li><a href="https://attack.mitre.org/software/S0651/"
+                                    target="_blank">HKEY_CURRENT_USER\Software\Microsoft\Windows
+                                    NT\CurrentVersion\Windows\load</a></li>
+                        </ul>
+                        <li>Sysinternals' <a href="https://learn.microsoft.com/en-us/sysinternals/downloads/autoruns"
+                                target="_blank">autoruns</a> provides a comprehensive view of auto-start locations
+                            within Windows. Also, it lists all programs that are configured to run during boot-up and
+                            login.
+                        </li>
+                        <li>Worth noting that the presence of code in a commonly used "persistence location" does not
+                            mean that the code is malicious, there are many legitimate code that utilizes these
+                            locations as well.</li>
+                    </ul>
+                </div>
+                <div id="3.2">
+                    <b>3.2. Scheduled Tasks: </b>
+                    <ul>
+                        <li>Tasks are scheduled within Windows through at.exe or schtasks.exe.</li>
+                        <li>When hunting consider:</li>
+                        <ul>
+                            <li>Event ID 4698 (a scheduled task was created).</li>
+                            <li>Event ID 106 (a task has been registered).</li>
+                            <li>Event ID 200 (task Scheduler launched the action in the instance of task).</li>
+                            <li>Event ID 201 (task scheduler successfully completed the task).</li>
+                            <li>Unusual tasks that run as an administrator or SYSTEM or with a blank username.</li>
+                        </ul>
+                    </ul>
+                </div>
+                <div id="3.3">
+                    <b>3.3. Component Object Model (COM) Hijacking: </b>
+                    <ul>
+                        <li>Microsoft’s Component Object Model is a <a
+                                href="https://learn.microsoft.com/en-us/windows/win32/com/component-object-model--com--portal"
+                                target="_blank">platform-independent, distributed, object-oriented system
+                                for creating binary software components that can interact</a>. Simply put, it enables
+                            interactions between software components and makes them accessible to other applications.
+                        </li>
+                        <li>To <a href="https://attack.mitre.org/techniques/T1546/015/" target="_blank">successfully
+                                hijack</a>, an adversary relies on the operating system to load the current user's
+                            objects before the local machine's objects.
+                        </li>
+                        <li>
+                            COM objects are identified by a class identifier (CLSID) which is a globally unique
+                            identifier.
+                            Most tools utilize it to detect a previously hijacked COM object (i.e. signature-based
+                            detection).
+                            The CLSIDs are located:
+                            <ul>
+                                <li>HKLM\Software\Classes\CLSID <span style="font-size: smaller;">(contains many
+                                        entries)</span>.</li>
+                                <li>HKCU\Software\Classes\CLSID <span style="font-size: smaller;">
+                                        (<a href="https://www.elastic.co/blog/how-hunt-detecting-persistence-evasion-com"
+                                            target="_blank">should not contain any entries or only a few</a>)</span>.
+                                </li>
+                                <li>Entries in HKCU have precedence over entries in HKLM.</li>
+                            </ul>
+                        </li>
+                        <li>The keys that are interesting within each COM object are:
+                            <ul>
+                                <li>
+                                    LocalServer32 which defines the executable's path.
+                                </li>
+                                <li>InprocServer32 which defines the dll's path.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+                <div id="3.4">
+                    <b>3.4. dll Hijacking:</b>
+                    <ul>
+                        <li>Search order: </li>
+                        <ul>
+                            <li>Whenever an executable runs, Windows starts searching for all the needed dlls. An
+                                adversary takes advantage of that feature by placing their malicious dll in the
+                                directory that will be searched before the location of the legitimate dll used by the
+                                application.
+                            </li>
+                            <li><a href="https://dmcxblue.gitbook.io/red-team-notes/persistence/dll-search-order-hijacking" target="_blank"> The order</a> is:
+                                <ol>
+                                    <li>The directory from which the application is loaded.</li>
+                                    <li>C:\Windows\System32</li>
+                                    <li>C:\Windows\System</li>
+                                    <li>C:\Windows</li>
+                                    <li>The current working directory.</li>
+                                    <li>Directories in the system PATH environment variable.</li>
+                                    <li>Directories in the user PATH environment variable.</li>
+                                </ol>
+                            </li>
+                        </ul>
+                        <li>Phantom dll: </li>
+                        <ul>
+                            <li>Executables might try and load old/deprecated dlls that no longer exist on the system.
+                                An adversary abuses that and places their malicious dll and name it the same name as
+                                the dll the executable is looking for.
+                            </li>
+                        </ul>
+                        <li>When hunting consider looking for unsigned dlls (i.e. anomalies).</li>
+                    </ul>
+                </div>
+                <div id="3.5">
+                    <b>3.5. Windows Services:</b>
+
+                    <ul>
+                        <li>Windows services are created using sc.exe. However, if a service is loaded directly by
+                            Windows then the associated file name that launches the service
+                            can be found in the "ImagePath" value in
+                            HKLM\SYSTEM\CurrentControlSet\Services\SERVICE_NAME.</li>
+                        <li>
+                            When the service is launched by svchost.exe, it will be placed in a particular service
+                            group. The list of these groups and services can be found in
+                            HKLM\Software\Microsoft\Windows NT\CurrentVersion\Svchost.
+                            <ul>
+                                <li>When a service is launched in this way, the actual file name for the service can be
+                                    found in: HKLM\SYSTEM\CurrentControlSet\Services\SERVICE_NAME\Parameters\ServiceDll
+                                    (The value of ServiceDLL is the actual service file).</li>
+                            </ul>
+                        </li>
+                        <li><a href="https://www.bleepingcomputer.com/download/getservices/"
+                                target="_blank">getservices</a>
+                            is a script that provides information about each service
+                            installed on the system. Interesting fields to consider are: SERVICE_NAME, BINARY_PATH_NAME,
+                            DISPLAY_NAME and START_TYPE.</li>
+                        <li>
+                            Event IDs to consider when hunting:
+                            <ul>
+                                <li>Event ID 7045 (service installation & generated by default).</li>
+                                <li>Event ID 4697 (a service was installed in the system).</li>
+                                <li>Event ID 7040 (service settings changed).</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <h2 id="links">4. Helpful Links</h2>
+                <ul>
+                    <li>
+                        <a href="https://jpcertcc.github.io/ToolAnalysisResultSheet/" target="_blank">
+                            Analysis of Multiple Tools and Their Artefacts.
+                        </a>
+                    </li>
+                    <li><a href="https://docs.microsoft.com/en-us/defender-for-identity/playbook-lateral-movement"
+                            target="_blank">Lateral Movement Playbook by Microsoft.</a></li>
+                    <li><a href="https://www.elastic.co/pdf/elastic-guide-to-threat-hunting" target="_blank">
+                            Elastic's Guide to Threat Hunting.
+                        </a></li>
+
+                    <li><a href="https://www.blackhat.com/docs/us-15/materials/us-15-Graeber-Abusing-Windows-Management-Instrumentation-WMI-To-Build-A-Persistent%20Asynchronous-And-Fileless-Backdoor-wp.pdf"
+                            target="_blank">
+                            Abusing Windows Management Instrumentation (WMI).
+                        </a></li>
+
+                    <li><a href="https://www.diva-portal.org/smash/get/diva2:1333165/FULLTEXT01.pdf" target="_blank">
+                            Malicious PowerShell Usage Monitoring Through Log Analysis.
+                        </a></li>
+
+                    <li><a href="https://adsecurity.org/?p=2604" target="_blank">
+                            Detecting Offensive PowerShell Attack Tools.
+                        </a></li>
+
+                    <li><a href="https://www.elastic.co/guide/en/security/current/prebuilt-rule-1-0-2-potential-modification-of-accessibility-binaries.html#prebuilt-rule-1-0-2-potential-modification-of-accessibility-binaries"
+                            target="_blank">
+                            Potential Modification of Accessibility Binaries.
+                        </a></li>
+                    <li>
+                        <a href="https://enigma0x3.net/2017/03/17/fileless-uac-bypass-using-sdclt-exe/" target="_blank">
+                            “Fileless” UAC Bypass using sdclt.exe
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="https://systemweakness.com/powershell-empire-threat-hunting-with-splunk-bfabfaf1dd93"
+                            target="_blank">
+                            Threat Hunting with Splunk (PowerShell Empire).
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.slideshare.net/votadlos/hunting-lateral-movement-in-windows-infrastructure"
+                            target="_blank">
+                            Hunting Lateral Movement in Windows Infrastructure.
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.botconf.eu/wp-content/uploads/2018/12/2018-Tom-Ueltschi-Sysmon.pdf"
+                            target="_blank">
+                            Using Sysmon and PowerShell Logging to Hunt and Detect APTs.
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.youtube.com/watch?v=_4c5RdqwHgI" target="_blank">
+                            Use PsExec When SysInternals Go Bad.
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.youtube.com/watch?v=JCJl2uV8u1c" target="_blank">
+                            There’s Something About WMI.
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://nasbench.medium.com/demystifying-the-svchost-exe-process-and-its-command-line-options-508e9114e747"
+                            target="_blank">
+                            Demystifying the svchost.exe Process and its Command Line Options.
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.first.org/resources/papers/conf2017/Advanced-Incident-Detection-and-Threat-Hunting-using-Sysmon-and-Splunk.pdf"
+                            target="_blank">
+                            Advanced Incident Detection and Threat Hunting using Sysmon (and Splunk).
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="https://dspace.cvut.cz/bitstream/handle/10467/83217/F8-BP-2019-Kotlaba-Lukas-thesis.pdf?sequence=-1&isAllowed=y"
+                            target="_blank">
+                            Detection of Active Directory Attacks.
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://securelist.com/using-legitimate-tools-to-hide-malicious-code/83074/"
+                            target="_blank">
+                            Using Legitimate Tools to Hide Malicious Code.
+                        </a>
+                    </li>
+
+                </ul>
+            </div>
+        </div>
+        <footer>
+            <p>Built and designed frustratingly & fondly by Ghadah <br>All rights reserved. ©</p>
+        </footer>
+    </div>
+</body>
+
+</html>
