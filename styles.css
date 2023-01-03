@@ -1192,7 +1192,9 @@ body #scene #left-zone .list li.item input[type="radio"]:checked~.content {
     word-wrap: break-word;
     text-align: left;
 }
-
+.postSmaller{
+font-size:small;
+}
 #postDate {
     font-size: small;
     font-weight: bold;
