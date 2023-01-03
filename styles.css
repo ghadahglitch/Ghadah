@@ -1117,7 +1117,7 @@ body #scene #left-zone .list li.item input[type="radio"]:checked~.content {
     margin: 6px;
     padding: 20px;
     width: 250px;
-    min-height: 250px;
+    min-height: 280px;
     display: grid;
     grid-template-rows: 20px 50px 1fr 50px;
     border-radius: 10px;
