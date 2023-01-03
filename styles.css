@@ -1546,7 +1546,8 @@ font-size:small;
         margin-left: 20px;
     }
     .postSmaller{
-    font-size: smaller;}
+    font-size: smaller !important;
+    }
     #post i {
         font-size: small !important;
     }
