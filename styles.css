@@ -1532,7 +1532,7 @@ body #scene #left-zone .list li.item input[type="radio"]:checked~.content {
     }
 
     #postContent {
-        font-size: xx-small;
+        font-size: small;
         text-align: justify;
         margin-left: 0px;
         width: 97%;
