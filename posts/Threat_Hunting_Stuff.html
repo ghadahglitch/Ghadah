@@ -35,7 +35,7 @@
                     The structure is as follows:
                 </p>
                 <ol>
-                    <li><a href="#general">General<span style="font-size:small;">-ish</span> Concepts</a></li>
+                    <li><a href="#general">General<span class="postSmaller" style="font-size:small;">-ish</span> Concepts</a></li>
                     <ul type="none">
                         <li><a href="#1.1">1.1. </a>Hypothesis.</li>
                         <li><a href="#1.2">1.2. </a>Windows Core Processes Questions.</li>
@@ -81,18 +81,18 @@
                 <div id="1.2">
                     <b>1.2.</b> When hunting within Windows, an understanding of the "core" Windows processes and
                     how they
-                    normally behave is needed in order to identify anomalies <span style="font-size:smaller;">(<a
+                    normally behave is needed in order to identify anomalies <span class="postSmaller" style="font-size:smaller;">(<a
                             href="#1.3">section 1.3</a> contains a
                         simplistic baseline)</span>, trying to answer
                     the below is a good start:
                     <ul>
                         <li>Is the name spelled correctly?</li>
                         <li>Is it signed by Microsoft?</li>
-                        <li>Is the process running out of the expected path? <span style="font-size:small;">(if it is
+                        <li>Is the process running out of the expected path? <span class="postSmaller" style="font-size:small;">(if it is
                                 running from temporary locations or the
                                 recycle bin it should be investigated)</span></li>
                         <li>Was the process spawned by the expected parent process?</li>
-                        <li>Is the process communicating to any outbound IPs? <span style="font-size:small;">(if it is
+                        <li>Is the process communicating to any outbound IPs? <span class="postSmaller" style="font-size:small;">(if it is
                                 then
                                 it should be investigated)</span></li>
                         <li>Is cmd.exe or wscript.exe or powershell.exe running as a child process?</li>
