@@ -147,7 +147,7 @@
                                     <li>Makes Windows API available for other processes.</li>
                                 </ul>
                             </li>
-                            <li><b>Parent Process:</b> no parent <span style="font-size: smaller;">(it’s created by
+                            <li><b>Parent Process:</b> no parent <span class="postSmaller">(it’s created by
                                     smss.exe
                                     but that
                                     process won’t exist)</span>.</li>
@@ -176,7 +176,7 @@
                                         process.</li>
                                 </ul>
                             </li>
-                            <li><b>Parent Process:</b> no parent <span style="font-size: smaller;">(it’s created by
+                            <li><b>Parent Process:</b> no parent <span class="postSmaller">(it’s created by
                                     smss.exe
                                     but that
                                     process won’t exist)</span>. </li>
@@ -206,7 +206,7 @@
                                     <li>Responsible for launching services.exe, lsass.exe and lsm.exe in session 0.</li>
                                 </ul>
                             </li>
-                            <li><b>Parent Process:</b> no parent <span style="font-size: smaller;">(it’s created by
+                            <li><b>Parent Process:</b> no parent <span class="postSmaller">(it’s created by
                                     smss.exe
                                     but that
                                     process won’t exist)</span>. </li>
@@ -302,7 +302,7 @@
                                     <li>Responsible for hosting multiple services' dlls into a generic shared service
                                         process.</li>
                                     <li>Each service will have a registry entry that includes ServiceDll, it instructs
-                                        svchost.exe to which dll to use <span style="font-size: smaller;">(entry will
+                                        svchost.exe to which dll to use <span class="postSmaller">(entry will
                                             include svchost.exe -k &lt;name&gt;)</span>.</li>
                                 </ul>
                             </li>
@@ -311,7 +311,7 @@
                                 Service
                                 (S-1-5-20).</li>
                             <ul>
-                                <li><span style="font-size: smaller;">In Windows 10, instances will start as the user
+                                <li><span class="postSmaller">In Windows 10, instances will start as the user
                                         upon
                                         logon (-k unistacksvcgroup).</span></li>
                             </ul>
@@ -321,7 +321,7 @@
                                     <li>Each svchost.exe process will run with a unique -k &lt;name&gt;.</li>
                                     <li>All dll-based services with the same &lt;name&gt; will share the same
                                         svchost.exe
-                                        process <span style="font-size: smaller;">(&lt;name&gt; values can be found in
+                                        process <span class="postSmaller">(&lt;name&gt; values can be found in
                                             Software\Microsoft\Windows
                                             NT\CurrentVersion\Svchost)</span>.</li>
                                     <li>Heavily abused, indicators include: omitting the -k, different path,
@@ -361,7 +361,7 @@
                                     </li>
                                 </ul>
                             </li>
-                            <li><b>Parent Process:</b> no parent <span style="font-size: smaller;">(created by
+                            <li><b>Parent Process:</b> no parent <span class="postSmaller">(created by
                                     userinit.exe
                                     but that process won't exist)</span>.
                             </li>
@@ -369,7 +369,7 @@
                             <li><b>Notes:</b>
                                 <ul type="disc">
                                     <li>Only one process is spawned per logged-on user <span
-                                            style="font-size: smaller;">(even if multiple explorer windows open)</span>.
+                                            class="postSmaller">(even if multiple explorer windows open)</span>.
                                     </li>
                                     <li>Instances that are listening/connected to a network port or where cmd is a child
                                         process should be investigated.</li>
@@ -389,7 +389,7 @@
                         <ul>
                             <li>Application: contains events logged by applications or user programs. Includes any error
                                 messages an application is designed to report. </li>
-                            <span style="font-size: smaller;">
+                            <span class="postSmaller">
                                 <ul type="disc">
                                     <li>Path in Windows XP, Windows 2003 and prior:
                                         %SystemRoot%\System32\Config\AppEvent.evt </li>
@@ -399,7 +399,7 @@
 
                             <li>System: contains events logged by multiple Windows system components such as loaded and
                                 unloaded drivers, different network configurations and Windows service events.</li>
-                            <span style="font-size: smaller;">
+                            <span class="postSmaller">
                                 <ul type="disc">
                                     <li>Path in Windows XP, Windows 2003 and prior:
                                         %SystemRoot%\System32\Config\SysEvent.evt </li>
@@ -409,7 +409,7 @@
                             <li>Security: contains events related to Windows authentication and security processes
                                 including successful and unsuccessful login attempts, changes to users’ privileges and
                                 creations of accounts. </li>
-                            <span style="font-size: smaller;">
+                            <span class="postSmaller">
                                 <ul type="disc">
                                     <li>Path in Windows XP, Windows 2003 and prior:
                                         %SystemRoot%\System32\Config\SecEvent.evt </li>
@@ -485,11 +485,11 @@
                             some of the ways
                             used are:</li>
                         <ul>
-                            <li>Using Silver and Golden Ticket attacks <span style="font-size: smaller;">(a popular
+                            <li>Using Silver and Golden Ticket attacks <span class="postSmaller">(a popular
                                     method)</span>.</li>
-                            <li>Cracking NTLM hashes <span style="font-size: smaller;">(might not work in some
+                            <li>Cracking NTLM hashes <span class="postSmaller">(might not work in some
                                     environments)</span>.</li>
-                            <li>Kerberoasting <span style="font-size: smaller;">(i.e. cracking kerberos service tickets
+                            <li>Kerberoasting <span class="postSmaller">(i.e. cracking kerberos service tickets
                                     with weak passwords)</span>.</li>
                         </ul>
                         <li>To hunt for possible password spraying/guessing attacks consider: </li>
@@ -580,7 +580,7 @@
                             <li>Performs a quick check to see if it can copy a file and execute it using the hidden
                                 $ADMIN
                                 share
-                                on the target system <span style="font-size: smaller;">(If $ADMIN isn’t available,
+                                on the target system <span class="postSmaller">(If $ADMIN isn’t available,
                                     PsExec will try using $IPC)</span>.</li>
                             <li>If no errors are received, it unpacks a binary from within itself “psexesvc.exe,” which
                                 is
@@ -598,7 +598,7 @@
                                 target="_blank">Hunting PsExec:</a></li>
                         <ul>
                             <li>Event ID 5145 is the best starting point as it captures details <span
-                                    style="font-size: smaller;">(including if the responsible process is
+                                    class="postSmaller">(including if the responsible process is
                                     PsExec or not)</span> for requests to access the hidden shares $ADMIN and $IPC.
                             </li>
 
@@ -826,7 +826,7 @@
                         </ul>
                         <li>Hunting for persistence through WMI involves:
                             <ol>
-                                <li>The creation of a WMI subscription <span style="font-size:small;">(so search for any
+                                <li>The creation of a WMI subscription <span class="postSmaller">(so search for any
                                         newly registered subscriptions)</span>.</li>
                                 <ul type="disc">
                                     <li>Sysmon event ID 19 (WmiEventFilter activity detected).</li>
@@ -835,7 +835,7 @@
                                     <li>Search for PowerShell's "Register-WmiEvent" command.</li>
                                 </ul>
                                 <li>The execution of WMI subscriptions which is handled by the WMI Provider Host process
-                                    <span style="font-size:small;">(i.e. processes spawning from WmiPrvSe.exe)</span>.
+                                    <span class="postSmaller">(i.e. processes spawning from WmiPrvSe.exe)</span>.
                                 </li>
                             </ol>
                         </li>
@@ -860,7 +860,7 @@
                             <li>The user is NT AUTHORITY\NETWORK SERVICE.</li>
                         </ul>
 
-                        <li>To hunt for lateral movement through WMI <span style="font-size:smaller;">(through network
+                        <li>To hunt for lateral movement through WMI <span class="postSmaller">(through network
                                 connections)</span> consider:</li>
                         <ul>
                             <li>Sysmon event ID 3 (new connection has been established).</li>
@@ -927,7 +927,7 @@
                                     attacks".</a></li>
                         </ul>
                         <b>
-                            <li><span style="font-size:small;">(managed) </span>Powershell:</li>
+                            <li><span class="postSmaller">(managed) </span>Powershell:</li>
                         </b>
                         <ul>
 
@@ -946,7 +946,7 @@
                                 determine if any outliers/anomalies can be detected.
                             </li>
                             </li>
-                            <li>When hunting for obfuscated Powershell commands <span style="font-size:small;">(mainly
+                            <li>When hunting for obfuscated Powershell commands <span class="postSmaller">(mainly
                                     base64-encoded commands)</span>
                                 consider:
                                 <ul type="disc">
@@ -1030,8 +1030,8 @@
                                     target="_blank">streams</a>.</li>
                             <li>Windows commands: </li>
                             <ul type="circle">
-                                <li>dir /r <span style="font-size:smaller;">(shows the streams per file).</span></li>
-                                <li>more &lt; FILE_NAME:STREAM_NAME <span style="font-size:smaller;">(prints the
+                                <li>dir /r <span class="postSmaller">(shows the streams per file).</span></li>
+                                <li>more &lt; FILE_NAME:STREAM_NAME <span class="postSmaller">(prints the
                                         value of the stream).</span></li>
                             </ul>
                             <li>Powershell command: get-item -path .\FILE_PATH -Stream * </li>
@@ -1074,7 +1074,7 @@
                                     <li>The malware executes the malicious dll in another process by starting a new
                                         thread through: CreateRemoteThread(), LoadLibrary().</li>
                                     <ul type="disc">
-                                        <span style="font-size: smaller;">
+                                        <span class="postSmaller">
                                             <li>CreateRemoteThread() function is not the only function that can be used,
                                                 there
                                                 are undocumented functions like: NTCreateThreadEx() and
@@ -1099,7 +1099,7 @@
                             <li>Simply put, it loads the malicious dll without calling the usual Windows APIs (i.e.
                                 the dll maps itself into memory). </li>
                             <ul type="disc">
-                                <span style="font-size: smaller;">
+                                <span class="postSmaller">
                                     <li>The dll has a <a
                                             href="https://www.elastic.co/security-labs/hunting-memory-net-attacks"
                                             target="_blank">self-mapping component </a>that is responsible for calling
@@ -1244,9 +1244,9 @@
                             detection).
                             The CLSIDs are located:
                             <ul>
-                                <li>HKLM\Software\Classes\CLSID <span style="font-size: smaller;">(contains many
+                                <li>HKLM\Software\Classes\CLSID <span class="postSmaller">(contains many
                                         entries)</span>.</li>
-                                <li>HKCU\Software\Classes\CLSID <span style="font-size: smaller;">
+                                <li>HKCU\Software\Classes\CLSID <span class="postSmaller">
                                         (<a href="https://www.elastic.co/blog/how-hunt-detecting-persistence-evasion-com"
                                             target="_blank">should not contain any entries or only a few</a>)</span>.
                                 </li>
