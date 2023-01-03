@@ -1198,7 +1198,6 @@ body #scene #left-zone .list li.item input[type="radio"]:checked~.content {
     font-size: small;
     font-weight: bold;
     color: #94a1b2;
-    margin-top: -25px;
     margin-left: 50px;
 }
 #post h2{
