@@ -1543,7 +1543,7 @@ body #scene #left-zone .list li.item input[type="radio"]:checked~.content {
         margin-top: -8px !important;
         margin-left: 20px;
     }
-    #postSmaller{
+    .postSmaller{
     font-size: smaller;}
     #post i {
         font-size: small !important;
