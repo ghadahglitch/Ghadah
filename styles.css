@@ -1540,7 +1540,7 @@ body #scene #left-zone .list li.item input[type="radio"]:checked~.content {
 
     #postDate {
         font-size: 0.5rem !important;
-        margin-top: -10px;
+        margin-top: -10px !important;
         margin-left: 20px;
     }
 
