@@ -211,6 +211,7 @@ nav {
 
 #intro-right {
     width: 50%;
+    transform: scaleX(1);
 }
 
 #intro-right img {
@@ -221,7 +222,6 @@ nav {
     height: auto;
     margin-left: 35%;
     margin-top: 20%;
-    transform: scaleX(-1);
 }
 
 .an {
