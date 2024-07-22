@@ -219,7 +219,7 @@ nav {
     min-width: 50%;
     max-width: 50%;
     height: auto;
-    /*margin-left: -35%;*/
+    margin-left: 15% !important;
     margin-top: 20%;
     transform: scaleX(1);
 
